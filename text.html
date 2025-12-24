@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سیستەمی هاتنی کرێکاران</title>
+
+<style>
+body{font-family:sans-serif;background:#f4f4f4;padding:10px;margin:0}
+.box{background:#fff;padding:10px;margin-bottom:10px;border-radius:6px}
+label{display:block;margin-top:6px;font-size:14px}
+input,select,button{width:100%;padding:10px;margin-top:6px;font-size:14px;box-sizing:border-box}
+button{cursor:pointer;border:none;border-radius:4px;background:#3498db;color:#fff}
+table{width:100%;border-collapse:collapse;background:#fff;margin-top:10px;display:block;overflow-x:auto}
+th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:13px}
+th{background:#eee}
+.delete{background:#c0392b;color:#fff;padding:5px 8px;font-size:12px;border:none;border-radius:4px;cursor:pointer}
+.totalBox{background:#e8f6f3;padding:10px;border-radius:6px;margin-top:10px;font-size:14px}
+
+/* Responsive Table for Mobile */
+@media (max-width:768px){
+  table thead{display:none}
+  table tr{display:block;margin-bottom:10px;border-bottom:1px solid #ccc}
+  table td{display:block;text-align:right;position:relative;padding-left:50%;border:none;border-bottom:1px solid #eee}
+  table td::before{position:absolute;top:6px;left:6px;width:45%;white-space:nowrap;font-weight:bold;text-align:left}
+  table td:nth-of-type(1)::before{content:"بەروار";}
+  table td:nth-of-type(2)::before{content:"ناو";}
+  table td:nth-of-type(3)::before{content:"بەش";}
+  table td:nth-of-type(4)::before{content:"پارە";}
+  table td:nth-of-type(5)::before{content:"سڕینەوە";}
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+<h3>➕ تۆمارکردنی هاتن</h3>
+<label>بەش</label>
+<select id="section">
+  <option>ئۆنڵاین</option>
+  <option>پێشەوە</option>
+  <option>INS</option>
+  <option>Alarm</option>
+</select>
+
+<label>ناوی کرێکار</label>
+<input id="name">
+
+<label>بەروار</label>
+<input type="date" id="date">
+
+<label>بڕی پارە (دینار)</label>
+<input type="number" id="wage" value="25000">
+
+<button onclick="add()">✔️ تۆمارکردن</button>
+</div>
+
+<div class="box">
+<label>📅 فلتەر مانگ</label>
+<select id="filterMonth" onchange="render()">
+  <option value="">-- هەموو مانگان --</option>
+  <option value="01">January</option>
+  <option value="02">February</option>
+  <option value="03">March</option>
+  <option value="04">April</option>
+  <option value="05">May</option>
+  <option value="06">June</option>
+  <option value="07">July</option>
+  <option value="08">August</option>
+  <option value="09">September</option>
+  <option value="10">October</option>
+  <option value="11">November</option>
+  <option value="12">December</option>
+</select>
+
+<label>🔍 گەڕان بۆ ناوی کرێکار</label>
+<input type="text" id="searchName" placeholder="ناوی کرێکار بنووسە" oninput="render()">
+</div>
+
+<table>
+<thead>
+<tr>
+<th>بەروار</th><th>ناو</th><th>بەش</th><th>پارە</th><th>❌</th>
+</tr>
+</thead>
+<tbody id="list"></tbody>
+</table>
+
+<div class="totalBox" id="summary"></div>
+
+<script>
+document.getElementById("date").valueAsDate = new Date();
+let data = JSON.parse(localStorage.getItem("attendanceData")) || [];
+
+function save(){localStorage.setItem("attendanceData",JSON.stringify(data));}
+
+function add(){
+  let name = document.getElementById("name").value.trim();
+  if(!name){alert("ناو بنوسە"); return;}
+  data.push({
+    date: date.value,
+    name: name,
+    section: section.value,
+    wage: Number(wage.value)
+  });
+  save(); render();
+  document.getElementById("name").value = "";
+}
+
+function remove(i){
+  if(confirm("دڵنیایت؟")){
+    data.splice(i,1);
+    save();
+    render();
+  }
+}
+
+function render(){
+  let list = document.getElementById("list");
+  let summary = document.getElementById("summary");
+  list.innerHTML = ""; summary.innerHTML = "";
+
+  let filterMonth = document.getElementById("filterMonth").value;
+  let searchName = document.getElementById("searchName").value.trim().toLowerCase();
+
+  let totalMoney = 0, totalDays = 0;
+  let perPerson = {};
+
+  data.forEach((r,i)=>{
+    if(filterMonth && r.date.slice(5,7)!=filterMonth) return;
+    if(searchName && !r.name.toLowerCase().includes(searchName)) return;
+
+    list.innerHTML += `
+    <tr>
+      <td>${r.date}</td>
+      <td>${r.name}</td>
+      <td>${r.section}</td>
+      <td>${r.wage}</td>
+      <td><button class="delete" onclick="remove(${i})">X</button></td>
+    </tr>`;
+
+    totalMoney += r.wage;
+    totalDays++;
+
+    if(!perPerson[r.name]) perPerson[r.name]={days:0,money:0,sections:[]};
+    perPerson[r.name].days++;
+    perPerson[r.name].money+=r.wage;
+    if(!perPerson[r.name].sections.includes(r.section)) perPerson[r.name].sections.push(r.section);
+  });
+
+  let html = `<h3>📊 ئەنجامی گەڕان</h3>
+  <p>🗓️ ژمارەی ڕۆژەکان: <b>${totalDays}</b></p>
+  <p>💰 کۆی پارە: <b>${totalMoney}</b> دینار</p>
+  <hr><h4>👤 بە هەر کرێکار</h4><ul>`;
+
+  for(let n in perPerson){
+    html+=`<li>${n} → ${perPerson[n].days} ڕۆژ / ${perPerson[n].money} دینار / بەش: ${perPerson[n].sections.join(', ')}</li>`;
+  }
+  html+="</ul>";
+  summary.innerHTML=html;
+}
+
+render();
+</script>
+
+</body>
+</html>
